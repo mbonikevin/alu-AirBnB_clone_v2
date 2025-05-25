@@ -1,12 +1,9 @@
 #!/usr/bin/python3
-"""
-HBNBCommand Module
-"""
-
+"""Defines the HBNB console."""
 import cmd
-import readline
-import rlcompleter
+from shlex import split
 from models import storage
+from datetime import datetime
 from models.base_model import BaseModel
 from models.user import User
 from models.state import State
@@ -16,272 +13,260 @@ from models.place import Place
 from models.review import Review
 
 
-# Enable tab completion
-readline.parse_and_bind("tab: complete")
-
-# Command history setup
-HISTORY_FILE = ".cmd_history"
-
-try:
-    # Load command history if it exists
-    readline.read_history_file(HISTORY_FILE)
-except FileNotFoundError:
-    pass  # No history file found, proceed silently
-
-# valid classes
-CLASSES = {
-    "BaseModel": BaseModel,
-    "User": User,
-    "State": State,
-    "City": City,
-    "Amenity": Amenity,
-    "Place": Place,
-    "Review": Review,
-}
-
-
-def inform_user_given_one_arg(arg):
-    """
-    Inform the user about missing or invalid arguments.
-
-    Args:
-        arg (str): The argument provided by the user.
-
-    Prints:
-        - "** class name missing **" if no argument is provided.
-        - "** class doesn't exist **" if the class name is invalid.
-        - "** instance id missing **" for incomplete commands.
-    """
-    if arg == "":
-        print("** class name missing **")
-    elif arg not in CLASSES.keys():
-        print("** class doesn't exist **")
-    else:
-        print("** instance id missing **")
-
-
-def inform_user_given_two_arg(class_name):
-    """
-    Inform the user about invalid or missing instances.
-
-    Args:
-        class_name (str): The class name provided by the user.
-
-    Prints:
-        - "** class doesn't exist **" if the class name is invalid.
-        - "** no instance found **" if the instance doesn't exist.
-    """
-    if class_name not in CLASSES.keys():
-        print("** class doesn't exist **")
-    else:
-        print("** no instance found **")
-
-
 class HBNBCommand(cmd.Cmd):
-    """
-    Command-line interface for managing Holberton BNB objects.
-
-    Attributes:
-        prompt (str): The command prompt displayed to the user.
-    """
+    """Defines the HolbertonBnB command interpreter."""
 
     prompt = "(hbnb) "
-    # dict of Classes
-    _Classes = CLASSES.copy()
-    # list of classes
-    classes = CLASSES.keys()
-
-    def do_quit(self, arg):
-        """
-        Exits the program.
-
-        Args:
-            arg (str): Optional argument (not used).
-
-        Usage:
-            quit
-        """
-        print("Have a Good Day!")
-        return True
-
-    def do_EOF(self, arg):
-        """
-        Exits the program when EOF is encountered.
-
-        Args:
-            arg (str): Optional argument (not used).
-
-        Usage:
-            EOF (press Ctrl+D)
-        """
-        return True
+    __classes = {
+        "BaseModel",
+        "User",
+        "State",
+        "City",
+        "Amenity",
+        "Place",
+        "Review"
+    }
 
     def emptyline(self):
-        """
-        Prevents the shell from repeating the last command on an empty line.
+        """Ignore empty spaces."""
+        pass
 
-        Returns:
-            False: Ensures the prompt is displayed again.
-        """
-        return False
+    def do_quit(self, line):
+        """Quit command to exit the program."""
+        return True
 
-    def do_create(self, arg):
-        """
-        Creates a new instance of BaseModel and saves it to storage.
+    def do_EOF(self, line):
+        """EOF signal to exit the program."""
+        print("")
+        return True
 
-        Args:
-            # to be edited
-
-        Usage:
-            # to be edited
-        """
-
-        # test if class_name provided
-        try:
-            cls_name = arg.split()[0]
-        except IndexError:
-            print("** Class name missing **")
-            return False
-
-        if cls_name.istitle() and cls_name in self._Classes.keys():
-            # create a dictionary to store parameters
-            param_dict = {}
-            if len(arg.split()) > 1:
-                for arg in arg.split()[1:]:
-                    if "=" in arg:
-                        parts = arg.split("=")
-                        try:
-                            parts[1] = int(parts[1])
-                        except ValueError:
-                            try:
-                                parts[1] = float(parts[1])
-                            except ValueError:
-                                parts[1] = parts[1].replace("_", " ")[1:-1]
-                        param_dict[parts[0]] = parts[1]
-
-            # class creation
-            instance = (
-                self._Classes[cls_name](**param_dict)
-                if param_dict
-                else self._Classes[cls_name]()
-            )
-            instance.save()
-            print(instance.id)
-        else:
-            print("** class name doesn't exist")
-
-    def do_show(self, arg):
-        """
-        Displays the string representation of an object.
-
-        Args:
-            arg (str): The class name and ID separated by a space.
-
-        Usage:
-            show <BaseModel or User or City
-                or Amenity or Place or Review> + <id>
+    def do_create(self, line):
+        """Usage: create <class> <key 1>=<value 2> <key 2>=<value 2> ...
+        Create a new class instance with given keys/values and print its id.
         """
         try:
-            class_name, id = arg.split()
-            all_objs = storage.all()
-            key = ".".join([class_name, id])
-            if key in all_objs.keys():
-                print(all_objs[key])
-            else:
-                inform_user_given_two_arg(class_name)
-        except ValueError:
-            inform_user_given_one_arg(arg)
+            if not line:
+                raise SyntaxError()
+            my_list = line.split(" ")
 
-    def do_destroy(self, arg):
-        """
-        Deletes an object from storage.
-
-        Args:
-            arg (str): The class name and ID separated by a space.
-
-        Usage:
-            destroy <BaseModel or User or City
-                    or Amenity or Place or Review> + <id>
-        """
-        try:
-            class_name, id = arg.split()
-            all_objs = storage.all()
-            key = ".".join([class_name, id])
-            if key in all_objs.keys():
-                storage.delete(key)
-            else:
-                inform_user_given_two_arg(class_name)
-        except ValueError:
-            inform_user_given_one_arg(arg)
-
-    def do_all(self, arg):
-        """
-        Displays all objects in storage or all objects of a specific class.
-
-        Args:
-            arg (str): The class name (optional).
-
-        Usage:
-            all [BaseModel, etc]
-        """
-        if arg in self.__class__.classes or arg == "":
-            if arg:
-                all_objs = storage.all(self._Classes[arg])
-            else:
-                all_objs = storage.all()
-            all_list = []
-            for key in all_objs.keys():
-                if arg in self.__class__.classes:
-                    if str(key).startswith(arg):
-                        all_list.append(str(all_objs[key]))
+            kwargs = {}
+            for i in range(1, len(my_list)):
+                key, value = tuple(my_list[i].split("="))
+                if value[0] == '"':
+                    value = value.strip('"').replace("_", " ")
                 else:
-                    all_list.append(str(all_objs[key]))
-            print(all_list)
-        else:
+                    try:
+                        value = eval(value)
+                    except (SyntaxError, NameError):
+                        continue
+                kwargs[key] = value
+
+            if kwargs == {}:
+                obj = eval(my_list[0])()
+            else:
+                obj = eval(my_list[0])(**kwargs)
+                storage.new(obj)
+            print(obj.id)
+            obj.save()
+
+        except SyntaxError:
+            print("** class name missing **")
+        except NameError:
             print("** class doesn't exist **")
 
-    def do_update(self, arg):
+    def do_show(self, line):
+        """Prints the string representation of an instance
+        Exceptions:
+            SyntaxError: when there is no args given
+            NameError: when there is no object taht has the name
+            IndexError: when there is no id given
+            KeyError: when there is no valid id given
         """
-        Updates an object's attributes.
-
-        Args:
-            arg (str): The class name, ID, attribute name, and value.
-
-        Usage:
-            update <class name> <id> <attribute name> <attribute value>
-        """
-
         try:
-            class_name, id, attr_name, attr_value = arg.split()
-            all_objs = storage.all()
-            key = ".".join([class_name, id])
-            if class_name in self.__class__.classes and key in all_objs.keys():
-                instance = all_objs[key]
-                setattr(instance, attr_name, attr_value)
-                instance.save()
-            elif class_name in self.__class__.classes:
-                print("** no instance found **")
+            if not line:
+                raise SyntaxError()
+            my_list = line.split(" ")
+            if my_list[0] not in self.__classes:
+                raise NameError()
+            if len(my_list) < 2:
+                raise IndexError()
+            objects = storage.all()
+            key = my_list[0] + '.' + my_list[1]
+            if key in objects:
+                print(objects[key])
             else:
-                print("** class doesn't exist **")
+                raise KeyError()
+        except SyntaxError:
+            print("** class name missing **")
+        except NameError:
+            print("** class doesn't exist **")
+        except IndexError:
+            print("** instance id missing **")
+        except KeyError:
+            print("** no instance found **")
+
+    def do_destroy(self, line):
+        """Deletes an instance based on the class name and id
+        Exceptions:
+            SyntaxError: when there is no args given
+            NameError: when there is no object taht has the name
+            IndexError: when there is no id given
+            KeyError: when there is no valid id given
+        """
+        try:
+            if not line:
+                raise SyntaxError()
+            my_list = line.split(" ")
+            if my_list[0] not in self.__classes:
+                raise NameError()
+            if len(my_list) < 2:
+                raise IndexError()
+            objects = storage.all()
+            key = my_list[0] + '.' + my_list[1]
+            if key in objects:
+                del objects[key]
+                storage.save()
+            else:
+                raise KeyError()
+        except SyntaxError:
+            print("** class name missing **")
+        except NameError:
+            print("** class doesn't exist **")
+        except IndexError:
+            print("** instance id missing **")
+        except KeyError:
+            print("** no instance found **")
+
+    def do_all(self, line):
+        """Usage: all or all <class> or <class>.all()
+        Display string representations of all instances of a given class.
+        If no class is specified, displays all instantiated objects."""
+        if not line:
+            o = storage.all()
+            print([o[k].__str__() for k in o])
+            return
+        try:
+            args = line.split(" ")
+            if args[0] not in self.__classes:
+                raise NameError()
+
+            o = storage.all(eval(args[0]))
+            print([o[k].__str__() for k in o])
+
+        except NameError:
+            print("** class doesn't exist **")
+
+    def do_update(self, line):
+        """Updates an instanceby adding or updating attribute
+        Exceptions:
+            SyntaxError: when there is no args given
+            NameError: when there is no object taht has the name
+            IndexError: when there is no id given
+            KeyError: when there is no valid id given
+            AttributeError: when there is no attribute given
+            ValueError: when there is no value given
+        """
+        try:
+            if not line:
+                raise SyntaxError()
+            my_list = split(line, " ")
+            if my_list[0] not in self.__classes:
+                raise NameError()
+            if len(my_list) < 2:
+                raise IndexError()
+            objects = storage.all()
+            key = my_list[0] + '.' + my_list[1]
+            if key not in objects:
+                raise KeyError()
+            if len(my_list) < 3:
+                raise AttributeError()
+            if len(my_list) < 4:
+                raise ValueError()
+            v = objects[key]
+            try:
+                v.__dict__[my_list[2]] = eval(my_list[3])
+            except Exception:
+                v.__dict__[my_list[2]] = my_list[3]
+                v.save()
+        except SyntaxError:
+            print("** class name missing **")
+        except NameError:
+            print("** class doesn't exist **")
+        except IndexError:
+            print("** instance id missing **")
+        except KeyError:
+            print("** no instance found **")
+        except AttributeError:
+            print("** attribute name missing **")
         except ValueError:
-            # when some values are missing
-            args = len(arg.split())  # arguments 'args' after spliting input
-            if arg == "":
-                print("** class name missing **")
-            elif args == 1 and arg.split()[0] in self.__class__.classes:
-                print("** instance id missing **")
-            elif arg.split()[0] not in self.__class__.classes:
-                print("** class doesn't exist **")
-            elif args == 2:
-                print("** attribute name missing **")
-            elif args == 3:
-                print("** value missing **")
+            print("** value missing **")
+
+    def count(self, line):
+        """count the number of instances of a class
+        """
+        counter = 0
+        try:
+            my_list = split(line, " ")
+            if my_list[0] not in self.__classes:
+                raise NameError()
+            objects = storage.all()
+            for key in objects:
+                name = key.split('.')
+                if name[0] == my_list[0]:
+                    counter += 1
+            print(counter)
+        except NameError:
+            print("** class doesn't exist **")
+
+    def strip_clean(self, args):
+        """strips the argument and return a string of command
+        Args:
+            args: input list of args
+        Return:
+            returns string of argumetns
+        """
+        new_list = []
+        new_list.append(args[0])
+        try:
+            my_dict = eval(
+                args[1][args[1].find('{'):args[1].find('}')+1])
+        except Exception:
+            my_dict = None
+        if isinstance(my_dict, dict):
+            new_str = args[1][args[1].find('(')+1:args[1].find(')')]
+            new_list.append(((new_str.split(", "))[0]).strip('"'))
+            new_list.append(my_dict)
+            return new_list
+        new_str = args[1][args[1].find('(')+1:args[1].find(')')]
+        new_list.append(" ".join(new_str.split(", ")))
+        return " ".join(i for i in new_list)
+
+    def default(self, line):
+        """retrieve all instances of a class and
+        retrieve the number of instances
+        """
+        my_list = line.split('.')
+        if len(my_list) >= 2:
+            if my_list[1] == "all()":
+                self.do_all(my_list[0])
+            elif my_list[1] == "count()":
+                self.count(my_list[0])
+            elif my_list[1][:4] == "show":
+                self.do_show(self.strip_clean(my_list))
+            elif my_list[1][:7] == "destroy":
+                self.do_destroy(self.strip_clean(my_list))
+            elif my_list[1][:6] == "update":
+                args = self.strip_clean(my_list)
+                if isinstance(args, list):
+                    obj = storage.all()
+                    key = args[0] + ' ' + args[1]
+                    for k, v in args[2].items():
+                        self.do_update(key + ' "{}" "{}"'.format(k, v))
+                else:
+                    self.do_update(args)
+        else:
+            cmd.Cmd.default(self, line)
 
 
-if __name__ == "__main__":
-    """
-    Entry point for the command-line interpreter.
-    Initializes and starts the command loop.
-    """
+if __name__ == '__main__':
     HBNBCommand().cmdloop()
-    readline.write_history_file(HISTORY_FILE)
