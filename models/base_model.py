@@ -1,5 +1,5 @@
 #!/usr/bin/python3
-from sqlalchemy import create_engine, Column, Integer, String, ForeignKey, DateTime
+from sqlalchemy import Column, Integer, String, ForeignKey, DateTime
 from sqlalchemy.orm import declarative_base
 from uuid import uuid4
 from datetime import datetime
@@ -82,7 +82,8 @@ class BaseModel:
             'updated_at': '2025-01-01T01:00:00'}"
         """
         # return f"[{self.__class__.__name__}] ({self.id}) {self.__dict__}"
-        return "[{}] ({}) {}".format(self.__class__.__name__, self.id, self.__dict__)
+        return "[{}] ({}) {}".format(
+            self.__class__.__name__, self.id, self.__dict__)
 
     # public methods
     def save(self):
